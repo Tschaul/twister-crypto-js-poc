@@ -5,13 +5,11 @@ var bencode = require('bencode');
 var request = require('request');
 var wif = require('wif');
 var BigInteger = require('bigi');
-var bs58check = require('bs58check')
-
+var bs58check = require('bs58check');
 
 var twister_network = Bitcoin.networks.bitcoin;
 
 twister_network.messagePrefix= '\x18twister Signed Message:\n';
-twister_network.pubKeyHash= 0x00;
 
 var username = "pampalulu";
 var pubkey ="032d48cdb8404165425a35ad60744263caf0c8d405bb97152dea4fd867744e1627";
@@ -32,12 +30,13 @@ var rpc = function(method,payload,callback){
       
 }
 
-var buffer = bs58check.decode(privkey)
 
-var decoded = wif.decodeRaw(0x80, buffer)
-var d = BigInteger.fromBuffer(decoded.d)
+///////////////////////////////////////////////////
+/// STEP ONE: RECOVER KEY PAIR FROM DUMP STRING ///
+//////////////////////////////////////////////////
 
-keyPair = new Bitcoin.ECPair(d, null);
+keyPair = new Bitcoin.ECPair.fromWIF(privkey,twister_network);
+
 
 console.log("\nTho following public keys should be equal:")
 console.log(new Buffer(pubkey, 'hex'))
@@ -45,15 +44,9 @@ console.log(keyPair.getPublicKeyBuffer());
 
 
 
-
-
-
-
-
-
-//////////////////////////////////////////////
-/// STEP ONE: REPRODUCE SIGNATURE FROM DHT ///
-//////////////////////////////////////////////
+///////////////////////////////////////////
+/// STEP TWO: VERIFY SIGNATURE FROM DHT ///
+///////////////////////////////////////////
 
 var postFromDht = {
         "p" : {
@@ -94,7 +87,7 @@ var postFromDht = {
     };
 
 
-
+// Preprocess message
 
 var signature = JSON.parse(JSON.stringify(postFromDht.sig_p));
 
@@ -118,13 +111,84 @@ if ("sig_rt" in message) {
 message = bencode.encode(message);
 signature = new Buffer(signature, 'hex');
 
-var verifed = Bitcoin.message.verify(keyPair, signature, message, twister_network);
 
-console.log("\n message could be verified: ",verifed);
+// Verify signature
+
+var verifed = Bitcoin.message.verify(keyPair.getAddress(), signature, message, twister_network);
+
+console.log("\n message signature could be verified: ",verifed);
+
+
+////////////////////////////////
+/// STEP THREE: SIGN MESSAGE ///
+////////////////////////////////
 
 var retVal = Bitcoin.message.sign(keyPair,message ,twister_network);
 
+var verifed = Bitcoin.message.verify(keyPair.getAddress(), retVal, message, twister_network);
 
-console.log("\nTho following signatures should be equal:")
-console.log(retVal);
-console.log(signature);
+console.log("\n self generated signature could be verified: ",verifed);
+
+
+///////////////////////////////////
+/// STEP THREE: DECRYPT MESSAGE ///
+///////////////////////////////////
+
+var encryptedPost = {
+        "sig_userpost" : "20ab1898d8402f6afaeff8d3ee4e5c7462380e1364fb46a6197f24c40bada6e7c0f1e6773e79328cc961da206a5d6032c99699eeebf20a763949980c09e5c3352d",
+        "userpost" : {
+            "dm" : {
+                "body" : "a9bed4f416c67d1280582e95ac3082f85432de738d9d58363c14ea20a2b55cc2",
+                "key" : "0310e6e3315f03f9be1d486911d9c8ea76f42df5c8723d1976fcdf2bf372b84c97",
+                "mac" : "b95028e067070ac69e38ad8d9a8c4fb79602127dc92b1bf3b3b7e8723df502378577713844eebe81d3e8e1a899354f79e5fcc41a005c55751bab2711f9b14e2e",
+                "orig" : 30
+            },
+            "height" : 106793,
+            "k" : 49,
+            "n" : "tschaul",
+            "time" : 1444577982
+        }
+    }
+;
+
+var sec_key = encryptedPost.userpost.dm.key;
+var sec_body = encryptedPost.userpost.dm.body;
+var sec_mac = encryptedPost.userpost.dm.mac;
+var sec_orig = encryptedPost.userpost.dm.orig;
+if (!Buffer.isBuffer(sec_key)) {
+    sec_key = new Buffer(sec_key, "hex");
+}
+if (!Buffer.isBuffer(sec_body)) {
+    sec_body = new Buffer(sec_body, "hex");
+}
+if (!Buffer.isBuffer(sec_mac)) {
+    sec_mac = new Buffer(sec_mac, "hex");
+}
+var pubkey = Bitcoin.ECPair.fromPublicKeyBuffer(sec_key)
+var secret = pubkey.Q.multiply(keyPair.d).getEncoded().slice(1,33)
+
+var hash_secret = Crypto.createHash('sha512').update(secret).digest()
+var aes_key = hash_secret.slice(0,32)
+var hmac_key = hash_secret.slice(32,64)
+
+var hmac=Crypto.createHmac("sha512",hmac_key)
+hmac.update(sec_body)
+var hmac_val = hmac.digest()
+
+var buffer = new Buffer(hmac_val.length);
+  hmac_val.copy(buffer);
+
+console.log("\n The following hmac signatures should be equal")
+console.log(buffer)
+console.log(sec_mac)
+
+console.log(aes_key.slice(0,32))
+
+
+var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key.slice(0,32),new Buffer(16))
+var out = []
+out.push(decrypter.update(sec_body))
+out.push(decrypter.final())
+var decrypted = Buffer.concat(out).slice(0,sec_orig)
+
+//console.log(decrypted);
