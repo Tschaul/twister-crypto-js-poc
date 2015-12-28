@@ -148,13 +148,34 @@ var encryptedPost = {
             "n" : "tschaul",
             "time" : 1444577982
         }
-    }
-;
+    };
+// retrvied by ./twister-core/twisterd getposts 1 '[{"username":"tschaul"}]' 2 2
 
 var sec_key = encryptedPost.userpost.dm.key;
 var sec_body = encryptedPost.userpost.dm.body;
 var sec_mac = encryptedPost.userpost.dm.mac;
 var sec_orig = encryptedPost.userpost.dm.orig;
+
+var testvector = {
+    "secret" : "KxQfV51HeY7dsML7jZonw1KxoEWrQ4f93QaQua2RZFNHc4d1VpkL",
+    "sec" : {
+        "ecies_key_derivation" : "910d1b7dff1ce8373af697b0d0586a8f0934143127fec00d502e6fbbd86b8a02",
+        "aes_key" : "fba95549c948b84fb6e338626eaa6e2db7c963533b87d2da65e7b751413e055f3a599f8541aff2e2134508de8ca207be16890fb35e520b90d85f37bc1027da56",
+        "key" : "0337cf4c9db7e37943fab38c5e700c9c96c33a14bbe493f2bf3f49d8d9f5d7ef99",
+        "mac" : "811fcddf475b9aecf6f6cc2930024372dfad48ac731e347ac7fc0670ba51404fd39df704b7a32b4b69a05e781e58f88fd24cee111eba2bff2e8cb6b40de037f1",
+        "orig" : 43,
+        "body" : "2a1d32be3c58f869c92ef3cb784d0439b65892929f43b2995d26a391f3e1baaf5ded64662d80a1d43babeeab5eb93649"
+    }
+}
+
+var sec_key = testvector.sec.key;
+var sec_body = testvector.sec.body;
+var sec_mac = testvector.sec.mac;
+var sec_orig = testvector.sec.orig;
+
+
+keyPair = new Bitcoin.ECPair.fromWIF(testvector.secret,twister_network);
+
 if (!Buffer.isBuffer(sec_key)) {
     sec_key = new Buffer(sec_key, "hex");
 }
@@ -167,6 +188,7 @@ if (!Buffer.isBuffer(sec_mac)) {
 var pubkey = Bitcoin.ECPair.fromPublicKeyBuffer(sec_key)
 var secret = pubkey.Q.multiply(keyPair.d).getEncoded().slice(1,33)
 
+
 var hash_secret = Crypto.createHash('sha512').update(secret).digest()
 var aes_key = hash_secret.slice(0,32)
 var hmac_key = hash_secret.slice(32,64)
@@ -174,21 +196,13 @@ var hmac_key = hash_secret.slice(32,64)
 var hmac=Crypto.createHmac("sha512",hmac_key)
 hmac.update(sec_body)
 var hmac_val = hmac.digest()
-
-var buffer = new Buffer(hmac_val.length);
-  hmac_val.copy(buffer);
-
-console.log("\n The following hmac signatures should be equal")
-console.log(buffer)
-console.log(sec_mac)
-
-console.log(aes_key.slice(0,32))
-
+if( hmac_val!=sec_mac) {
+    console.log("hmac does not match",hmac_val,sec_mac)
+}
 
 var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key.slice(0,32),new Buffer(16))
 var out = []
 out.push(decrypter.update(sec_body))
 out.push(decrypter.final())
 var decrypted = Buffer.concat(out).slice(0,sec_orig)
-
 //console.log(decrypted);
