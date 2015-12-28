@@ -196,11 +196,13 @@ var hmac_key = hash_secret.slice(32,64)
 var hmac=Crypto.createHmac("sha512",hmac_key)
 hmac.update(sec_body)
 var hmac_val = hmac.digest()
-if( hmac_val!=sec_mac) {
-    console.log("hmac does not match",hmac_val,sec_mac)
-}
 
-var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key.slice(0,32),new Buffer(16))
+console.log("\n the following hashes should be equal")
+console.log(hmac_val)
+console.log(sec_mac)
+
+
+var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key,new Buffer(16))
 var out = []
 out.push(decrypter.update(sec_body))
 out.push(decrypter.final())
