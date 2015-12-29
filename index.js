@@ -109,7 +109,7 @@ if ("sig_rt" in message) {
 }
 
 message = bencode.encode(message);
-console.log(message)
+console.log("bencoded message",message.toString())
 signature = new Buffer(signature, 'hex');
 
 
@@ -218,6 +218,8 @@ decrypter.setAutoPadding()
 var out = [];
 out.push(decrypter.update(sec_body))
 out.push(decrypter.final())
-var decrypted = Buffer.concat(out).slice(0,sec_orig)
-    
-console.log(bencode.decode(decrypted))
+var decrypted = Buffer.concat(out).slice(1,sec_orig+1);
+
+console.log(decrypted.toString())
+
+console.log(bencode.decode(decrypted).toString())
