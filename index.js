@@ -220,4 +220,4 @@ out.push(decrypter.update(sec_body))
 out.push(decrypter.final())
 var decrypted = Buffer.concat(out).slice(0,sec_orig)
     
-console.log(decrypted.toString())
+console.log(bencode.decode(decrypted))
