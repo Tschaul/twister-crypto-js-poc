@@ -109,7 +109,7 @@ if ("sig_rt" in message) {
 }
 
 message = bencode.encode(message);
-console.log("bencoded message",message.toString())
+//console.log("bencoded message",message.toString())
 signature = new Buffer(signature, 'hex');
 
 
@@ -117,7 +117,7 @@ signature = new Buffer(signature, 'hex');
 
 var verifed = Bitcoin.message.verify(keyPair.getAddress(), signature, message, twister_network);
 
-console.log("\n message signature could be verified: ",verifed);
+console.log("\nmessage signature could be verified: ",verifed);
 
 
 ////////////////////////////////
@@ -128,7 +128,7 @@ var retVal = Bitcoin.message.sign(keyPair,message ,twister_network);
 
 var verifed = Bitcoin.message.verify(keyPair.getAddress(), retVal, message, twister_network);
 
-console.log("\n self generated signature could be verified: ",verifed);
+console.log("\nself generated signature could be verified: ",verifed);
 
 
 ///////////////////////////////////
@@ -192,29 +192,27 @@ var secret = pubkey.Q.multiply(keyPair.d).getEncoded().slice(1,33)
 
 var hash_secret = Crypto.createHash('sha512').update(secret).digest()
 var aes_key = hash_secret.slice(0,32)
-console.log("\n aes keys")
-console.log(aes_key)
-test_aes_key = new Buffer(testvector.sec.aes_key,"hex");
-console.log(test_aes_key,test_aes_key.length)
+//console.log("\n aes keys")
+//console.log(aes_key)
+//test_aes_key = new Buffer(testvector.sec.aes_key,"hex");
+//console.log(test_aes_key,test_aes_key.length)
 
-console.log(new Buffer(testvector.sec.ecies_key_derivation,"hex"));
+//console.log(new Buffer(testvector.sec.ecies_key_derivation,"hex"));
 
 
 var hmac_key = hash_secret.slice(32,64)
 
-console.log(hmac_key)
+//console.log(hmac_key)
 
 var hmac=Crypto.createHmac("sha512",hmac_key)
 hmac.update(sec_body)
 var hmac_val = hmac.digest()
 
-console.log("\n the following hashes should be equal")
+console.log("\nthe following hashes should be equal")
 console.log(hmac_val)
 console.log(sec_mac)
 
 var iv = new Buffer("00000000000000000000000000000000","hex");
-console.log(iv,iv.length)
-
 var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key,iv)
 decrypter.setAutoPadding()
 var out = [];
@@ -222,7 +220,4 @@ out.push(decrypter.update(sec_body))
 out.push(decrypter.final())
 var decrypted = Buffer.concat(out).slice(0,sec_orig);
 
-console.log(decrypted)
-console.log(decrypted.toString())
-
-console.log(bencode.decode(decrypted))
+console.log("\ndecrypted message: ",bencode.decode(decrypted).msg.toString())
