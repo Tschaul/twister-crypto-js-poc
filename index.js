@@ -109,6 +109,7 @@ if ("sig_rt" in message) {
 }
 
 message = bencode.encode(message);
+console.log(message)
 signature = new Buffer(signature, 'hex');
 
 
@@ -168,13 +169,13 @@ var testvector = {
     }
 }
 
-var sec_key = testvector.sec.key;
-var sec_body = testvector.sec.body;
-var sec_mac = testvector.sec.mac;
-var sec_orig = testvector.sec.orig;
+//var sec_key = testvector.sec.key;
+//var sec_body = testvector.sec.body;
+//var sec_mac = testvector.sec.mac;
+//var sec_orig = testvector.sec.orig;
 
 
-keyPair = new Bitcoin.ECPair.fromWIF(testvector.secret,twister_network);
+//keyPair = new Bitcoin.ECPair.fromWIF(testvector.secret,twister_network);
 
 if (!Buffer.isBuffer(sec_key)) {
     sec_key = new Buffer(sec_key, "hex");
@@ -191,7 +192,17 @@ var secret = pubkey.Q.multiply(keyPair.d).getEncoded().slice(1,33)
 
 var hash_secret = Crypto.createHash('sha512').update(secret).digest()
 var aes_key = hash_secret.slice(0,32)
+console.log("\n aes keys")
+console.log(aes_key)
+test_aes_key = new Buffer(testvector.sec.aes_key,"hex");
+console.log(test_aes_key,test_aes_key.length)
+
+console.log(new Buffer(testvector.sec.ecies_key_derivation,"hex"));
+
+
 var hmac_key = hash_secret.slice(32,64)
+
+console.log(hmac_key)
 
 var hmac=Crypto.createHmac("sha512",hmac_key)
 hmac.update(sec_body)
@@ -203,8 +214,10 @@ console.log(sec_mac)
 
 
 var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key,new Buffer(16))
-var out = []
+decrypter.setAutoPadding()
+var out = [];
 out.push(decrypter.update(sec_body))
 out.push(decrypter.final())
 var decrypted = Buffer.concat(out).slice(0,sec_orig)
-//console.log(decrypted);
+    
+console.log(decrypted.toString())
