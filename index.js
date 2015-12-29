@@ -212,8 +212,8 @@ console.log("\n the following hashes should be equal")
 console.log(hmac_val)
 console.log(sec_mac)
 
-var iv = new Buffer(16);
-console.log(iv)
+var iv = new Buffer("00000000000000000000000000000000","hex");
+console.log(iv,iv.length)
 
 var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key,iv)
 decrypter.setAutoPadding()
