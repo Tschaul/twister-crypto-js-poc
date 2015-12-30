@@ -212,6 +212,7 @@ console.log("\nthe following hashes should be equal")
 console.log(hmac_val)
 console.log(sec_mac)
 
+// note: new Buffer(16) does not give an empty (all zero) buffer
 var iv = new Buffer("00000000000000000000000000000000","hex");
 var decrypter = Crypto.createDecipheriv("aes-256-cbc",aes_key,iv)
 decrypter.setAutoPadding()
@@ -219,5 +220,5 @@ var out = [];
 out.push(decrypter.update(sec_body))
 out.push(decrypter.final())
 var decrypted = Buffer.concat(out).slice(0,sec_orig);
-
+console.log(decrypted.toString())
 console.log("\ndecrypted message: ",bencode.decode(decrypted).msg.toString())
