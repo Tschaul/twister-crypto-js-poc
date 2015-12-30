@@ -152,6 +152,12 @@ var encryptedPost = {
     };
 // retrvied by ./twister-core/twisterd getposts 1 '[{"username":"tschaul"}]' 2 2
 
+
+//encryptedPost.userpost.dm = { orig: 14,   key: '0258c85bdb26c82e24931e5d9f86361c232b72065678165a6eb5816baa0c8b517d', body: '0399eaac238142553f28ef1bc1f9f8d1',  mac: '32577d471c1af25aa52434e152e2ee27bea8fc208e0bd761f5aabe677f31f1f75e4a9d94e9fdeaa3b7fb2ef335a813aac4f32fe0726937f9543008f28002aded' }
+
+    
+    
+    
 var sec_key = encryptedPost.userpost.dm.key;
 var sec_body = encryptedPost.userpost.dm.body;
 var sec_mac = encryptedPost.userpost.dm.mac;
@@ -222,3 +228,36 @@ out.push(decrypter.final())
 var decrypted = Buffer.concat(out).slice(0,sec_orig);
 console.log(decrypted.toString())
 console.log("\ndecrypted message: ",bencode.decode(decrypted).msg.toString())
+
+
+/////////////////////////////////
+// STEP FOUR ENCRYPT A MESSAGE //
+/////////////////////////////////
+
+message = "another secret"
+
+var sec = { orig: message.length }
+var ephemeral = Bitcoin.ECPair.makeRandom()
+sec["key"] = ephemeral.getPublicKeyBuffer().toString('hex')
+
+var secret = keyPair.Q.multiply(ephemeral.d).getEncoded().slice(1,33)
+
+var hash_secret = Crypto.createHash('sha512').update(secret).digest()
+var aes_key = hash_secret.slice(0,32)
+var hmac_key = hash_secret.slice(32,64)
+
+var iv = new Buffer("00000000000000000000000000000000","hex");
+
+var crypter = Crypto.createCipheriv("aes-256-cbc",aes_key.slice(0,32),iv)
+//crypter.setAutoPadding()
+var out = []
+out.push(crypter.update(message))
+out.push(crypter.final())
+var sec_body = Buffer.concat(out)
+sec["body"] = sec_body.toString('hex')
+
+hmac=Crypto.createHmac("sha512",hmac_key)
+hmac.update(sec_body)
+sec["mac"] = hmac.digest().toString('hex')
+
+console.log(sec)
